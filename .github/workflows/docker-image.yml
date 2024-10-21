@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Docker Image CI/CD
 
 on:
   push:
@@ -8,30 +8,46 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Docker image
+        run: docker build -t my-app .
 
       - name: Log in to Amazon ECR
         run: |
-          echo "${{ secrets.AWS_ACCESS_KEY_ID }}" | docker login --username AWS --password-stdin 466670870088.dkr.ecr.us-east-1.amazonaws.com
-
-      - name: Build Docker image
-        run: |
-          docker build -t my-app .
-
-      - name: Tag Docker image
-        run: |
-          docker tag my-app:latest 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 466670870088.dkr.ecr.us-east-1.amazonaws.com
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Push Docker image to ECR
         run: |
-          docker push 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest
+          docker tag my-app:latest 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
+          docker push 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
 
-      - name: Log out from ECR
+      - name: Deploy to EC2
         run: |
-          docker logout 466670870088.dkr.ecr.us-east-1.amazonaws.com
+          ssh -o StrictHostKeyChecking=no ec2-user@YOUR_EC2_INSTANCE_IP << 'EOF'
+            # Pull the latest image
+            docker pull 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
+            
+            # Stop and remove any running container
+            docker stop my-app || true
+            docker rm my-app || true
+            
+            # Run the new container
+            docker run -d --name my-app -p 80:80 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
+          EOF
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

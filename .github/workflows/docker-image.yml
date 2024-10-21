@@ -1,0 +1,38 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'  
+
+      - name: Install dependencies
+        run: npm install  # or npm ci if you have a package-lock.json
+
+      - name: Build the Docker image
+        run: docker build -t my-app .
+
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 466670870088.dkr.ecr.us-east-1.amazonaws.com
+        env:
+          AWS_ACCESS_KEY_ID: ${{ AKIAWZJ6ALZEFHRNZ23J }}
+          AWS_SECRET_ACCESS_KEY: ${{ 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 }}
+
+      - name: Tag the Docker image
+        run: docker tag my-app:latest 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest
+
+      - name: Push the Docker image to ECR
+        run: docker push 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest

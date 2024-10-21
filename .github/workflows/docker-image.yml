@@ -31,6 +31,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Push Docker image to ECR
-        run: |
-          docker tag my-app:466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest 
-          docker push 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
+  run: |
+    docker tag my-app:latest 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest
+    docker push 466670870088.dkr.ecr.us-east-1.amazonaws.com/my-app-ecr:latest
+
